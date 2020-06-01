@@ -1,19 +1,42 @@
 class BooksController < ApplicationController
 
+	# 追記
+	before_action :authenticate_user!
+  before_action :ensure_correct_user, {only: [:edit, :update]}
+  def ensure_correct_user
+    @book=Book.find(params[:id])
+    if current_user.id !=  @book.user_id
+     redirect_to books_path
+    end
+	end
+	
+
+
+
   def show
-  	@book = Book.find(params[:id])
+		@book = Book.find(params[:id])
+		# 追記
+		 @create_book=Book.new
   end
 
   def index
-  	@books = Book.all #一覧表示するためにBookモデルの情報を全てくださいのall
+		@books = Book.all #一覧表示するためにBookモデルの情報を全てくださいのall
+		# 追記
+		@user = User.find_by(id: current_user.id)
+		@book=Book.new
   end
 
   def create
-  	@book = Book.new(book_params) #Bookモデルのテーブルを使用しているのでbookコントローラで保存する。
+		@book = Book.new(book_params) #Bookモデルのテーブルを使用しているのでbookコントローラで保存する。
+		@book.user_id = current_user.id
   	if @book.save #入力されたデータをdbに保存する。
-  		redirect_to @book, notice: "successfully created book!"#保存された場合の移動先を指定。
-  	else
-  		@books = Book.all
+			# redirect_to @book, notice: "successfully created book!"#保存された場合の移動先を指定。
+			redirect_to  book_path(@book.id), notice: "successfully created book!"
+		else
+			@user = User.find_by(id: current_user.id)
+			@books = Book.all
+			# エラーだと真上に表示されてしまうのでわざとflash使う。そうするとパーシャルはeditと同じもの使えない
+			flash.now[:alert_create]=  ""
   		render 'index'
   	end
   end
@@ -33,16 +56,16 @@ class BooksController < ApplicationController
   	end
   end
 
-  def delete
+  def destroy
   	@book = Book.find(params[:id])
-  	@book.destoy
+  	@book.destroy
   	redirect_to books_path, notice: "successfully delete book!"
   end
 
   private
 
   def book_params
-  	params.require(:book).permit(:title)
+  	params.require(:book).permit(:title, :body, :user)
   end
 
 end
